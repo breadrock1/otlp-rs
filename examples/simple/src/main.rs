@@ -1,7 +1,5 @@
-use tokio::net::TcpListener;
-use tower_http::{cors, trace};
-
 use otlp::init_telemetry;
+use tokio::net::TcpListener;
 
 const SERVICE_NAME: &str = "axum-service";
 const SERVICE_ADDRESS: &str = "0.0.0.0:8080";
