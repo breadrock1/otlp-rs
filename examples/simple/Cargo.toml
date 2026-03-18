@@ -11,4 +11,4 @@ tower-http = "0.6.8"
 tracing = "0.1.44"
 
 [dependencies.otlp]
-path = "../."
+path = "../../."
