@@ -3,6 +3,7 @@ pub use config::TelemetryConfig;
 
 mod filter;
 pub use filter::PathFilter;
+pub use filter::otel_axum_layer_filter_callback;
 
 use gset::Getset;
 use opentelemetry::global;

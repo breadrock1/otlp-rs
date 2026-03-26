@@ -1,10 +1,21 @@
 use axum::http::Request;
+use cached::proc_macro::once;
 use regex::Regex;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+#[once]
+fn build_path_filter() -> PathFilter {
+    PathFilter::default()
+}
+
+pub fn otel_axum_layer_filter_callback(path: &str) -> bool {
+    let path_filter = build_path_filter();
+    !path_filter.is_path_ignored(path)
+}
+
 #[derive(Clone)]
 pub struct PathFilter {
-    paths: Vec<Regex>,
+    pub paths: Vec<Regex>,
 }
 
 impl Default for PathFilter {
@@ -13,7 +24,8 @@ impl Default for PathFilter {
             paths: vec![
                 Regex::new("/health").expect("failed to compile health regex"),
                 Regex::new("/metrics").expect("failed to compile metrics regex"),
-                Regex::new("/api/.*/swagger").expect("failed to compile swagger regex"),
+                Regex::new("/api/swagger/.*").expect("failed to compile swagger regex"),
+                Regex::new("/api-docs/openapi.json").expect("failed to compile swagger regex"),
             ],
         }
     }
@@ -50,7 +62,10 @@ impl<B> tower_http::trace::MakeSpan<B> for PathFilter {
             propagator.extract(&HeaderExtractor(request.headers()))
         });
 
-        let _ = span.set_parent(parent_context);
+        if let Err(err) = span.set_parent(parent_context) {
+            return tracing::span!(tracing::Level::DEBUG, "failed to set span parent", err=?err);
+        }
+
         span
     }
 }

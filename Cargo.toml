@@ -1,6 +1,6 @@
 [package]
 name = "otlp"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 
 [badges]
@@ -8,6 +8,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 anyhow = "1.0.96"
+cached = "0.59.0"
 derive_builder = "0.20.2"
 gset = "1.1.0"
 opentelemetry = "0.31.0"
