@@ -5,6 +5,9 @@ mod filter;
 pub use filter::PathFilter;
 pub use filter::otel_axum_layer_filter_callback;
 
+mod logger;
+pub use logger::HttpLogger;
+
 use gset::Getset;
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider;
@@ -139,8 +142,9 @@ pub fn init_telemetry(
     let env_filter = tracing_subscriber::EnvFilter::from_default_env();
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_level(true)
-        .with_thread_ids(true)
-        .with_thread_names(true)
+        .with_thread_ids(false)
+        .with_thread_names(false)
+        .with_line_number(false)
         .with_span_events(FmtSpan::NONE)
         .pretty();
 
