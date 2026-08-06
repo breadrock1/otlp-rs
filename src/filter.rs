@@ -24,6 +24,9 @@ impl Default for PathFilter {
             paths: vec![
                 Regex::new("/health").expect("failed to compile health regex"),
                 Regex::new("/metrics").expect("failed to compile metrics regex"),
+                Regex::new("/favicon.ico").expect("failed to compile favicon.ico regex"),
+                Regex::new("/static/.*").expect("failed to compile static regex"),
+                Regex::new("/api/metrics").expect("failed to compile api metrics regex"),
                 Regex::new("/api/swagger/.*").expect("failed to compile swagger regex"),
                 Regex::new("/api-docs/openapi.json").expect("failed to compile swagger regex"),
             ],
