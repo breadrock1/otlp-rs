@@ -1,5 +1,6 @@
+mod attributes;
 mod config;
-pub use config::TelemetryConfig;
+pub use config::{HeaderAttribute, TelemetryConfig};
 
 mod filter;
 pub use filter::PathFilter;
@@ -7,6 +8,9 @@ pub use filter::otel_axum_layer_filter_callback;
 
 mod logger;
 pub use logger::HttpLogger;
+
+mod syslog;
+pub use syslog::SyslogLayer;
 
 use gset::Getset;
 use opentelemetry::global;
@@ -54,6 +58,7 @@ pub fn init_telemetry(
     config: &TelemetryConfig,
 ) -> anyhow::Result<TelemetryGuard> {
     init_rust_log_env(config.level());
+    attributes::validate_attributes(config.attributes());
 
     let mut telemetry_guard = TelemetryGuard::default();
 
@@ -148,11 +153,14 @@ pub fn init_telemetry(
         .with_span_events(FmtSpan::NONE)
         .pretty();
 
+    let syslog_layer = syslog::build_syslog_layer(config)?;
+
     let common_subscriber = tracing_subscriber::registry()
         .with(fmt_layer)
         .with(env_filter)
         .with(telemetry_layer)
-        .with(loki_layer);
+        .with(loki_layer)
+        .with(syslog_layer);
 
     tracing::subscriber::set_global_default(common_subscriber)?;
 

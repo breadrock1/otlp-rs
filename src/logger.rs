@@ -1,3 +1,5 @@
+use crate::attributes::extract_attributes;
+use crate::config::HeaderAttribute;
 use axum::body::HttpBody;
 use axum::extract::Request;
 use axum::http::header;
@@ -9,11 +11,13 @@ use tower::layer::Layer;
 use uuid::Uuid;
 
 #[derive(Clone, Default)]
-pub struct HttpLogger;
+pub struct HttpLogger {
+    attributes: Vec<HeaderAttribute>,
+}
 
 impl HttpLogger {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(attributes: Vec<HeaderAttribute>) -> Self {
+        Self { attributes }
     }
 }
 
@@ -21,13 +25,17 @@ impl<S> Layer<S> for HttpLogger {
     type Service = LoggerMiddleware<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        LoggerMiddleware { inner }
+        LoggerMiddleware {
+            inner,
+            attributes: self.attributes.clone(),
+        }
     }
 }
 
 #[derive(Clone)]
 pub struct LoggerMiddleware<S> {
     inner: S,
+    attributes: Vec<HeaderAttribute>,
 }
 
 impl<S> Service<Request> for LoggerMiddleware<S>
@@ -55,6 +63,8 @@ where
     // referer="http://localhost:2893/api/swagger/index.html"
     // client_ip="127.0.0.1"
     // user_agent="Mozilla/5.0 Firefox/149.0"
+    // user_id="123"
+    // organization_id="acme"
 
     fn call(&mut self, request: Request) -> Self::Future {
         let request_id = Uuid::new_v4();
@@ -83,6 +93,12 @@ where
             .and_then(|h| h.to_str().ok())
             .unwrap_or("unknown")
             .to_string();
+
+        // Extract configured request attributes. Values are rendered as
+        // separate top-level fields on the http-request event below.
+        let extracted = extract_attributes(request.headers(), &self.attributes);
+        let user_id = value_of(&extracted, "user_id").to_string();
+        let organization_id = value_of(&extracted, "organization_id").to_string();
 
         let instant = std::time::Instant::now();
         let future = self.inner.call(request);
@@ -114,6 +130,8 @@ where
                     %referer,
                     %client_ip,
                     %user_agent,
+                    user_id,
+                    organization_id,
                     "http-request"
                 ),
                 false => tracing::error!(
@@ -128,6 +146,8 @@ where
                     %referer,
                     %client_ip,
                     %user_agent,
+                    user_id,
+                    organization_id,
                     "http-request"
                 ),
             };
@@ -135,4 +155,14 @@ where
             Ok(response)
         })
     }
+}
+
+/// Returns the value for the given attribute name, or an empty string when it
+/// was not configured/present on the request.
+fn value_of<'a>(attributes: &'a [(String, String)], name: &str) -> &'a str {
+    attributes
+        .iter()
+        .find(|(n, _)| n == name)
+        .map(|(_, v)| v.as_str())
+        .unwrap_or("")
 }
