@@ -4,8 +4,8 @@ use std::sync::Mutex;
 use syslog::{Formatter3164, Logger, LoggerBackend, Severity};
 use tracing::field::{Field, Visit};
 use tracing::{Event, Level, Subscriber};
-use tracing_subscriber::layer::Context;
 use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
 
 /// A `tracing_subscriber` layer that forwards every log event to a syslog
 /// server (or the local `/dev/log` Unix socket), mapping the tracing level to
@@ -68,12 +68,13 @@ fn severity_of(level: &Level) -> Severity {
 /// used; otherwise the address must look like `udp://host:port` or
 /// `tcp://host:port`.
 pub fn build_syslog_layer(config: &TelemetryConfig) -> anyhow::Result<Option<SyslogLayer>> {
-    if !config.enable_syslog() {
+    if !config.logger().is_syslog_enabled() {
         return Ok(None);
     }
 
+    let syslog_config = config.logger().get_syslog_config();
     let formatter = Formatter3164::default();
-    let logger = match config.syslog_address().as_deref() {
+    let logger = match syslog_config.address().as_deref() {
         None | Some("") => syslog::unix(formatter)?,
         Some(addr) => build_remote_logger(formatter, addr)?,
     };
@@ -85,10 +86,7 @@ fn build_remote_logger(
     formatter: Formatter3164,
     addr: &str,
 ) -> anyhow::Result<Logger<LoggerBackend, Formatter3164>> {
-    let server = addr
-        .split_once("://")
-        .map(|(_, rest)| rest)
-        .unwrap_or(addr);
+    let server = addr.split_once("://").map(|(_, rest)| rest).unwrap_or(addr);
 
     match addr {
         a if a.starts_with("udp://") => Ok(syslog::udp(formatter, ("0.0.0.0", 0), server)?),

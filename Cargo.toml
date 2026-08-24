@@ -55,4 +55,4 @@ features = ["v4"]
 
 [[example]]
 name = "simple"
-path = "examples/simple"
+path = "examples/simple/src/main.rs"

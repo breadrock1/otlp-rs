@@ -1,9 +1,10 @@
-use crate::attributes::extract_attributes;
-use crate::config::HeaderAttribute;
 use axum::http::Request;
 use cached::proc_macro::once;
 use regex::Regex;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+use crate::attributes::extract_attributes;
+use crate::config::HeaderAttribute;
 
 #[once]
 fn build_path_filter() -> PathFilter {

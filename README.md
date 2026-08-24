@@ -27,10 +27,22 @@ There is library to enable observability on rust service with following abilitie
 
     ```rust
     fn main() -> anyhow::Result<()> {
-        let otlp_config = otlp::TelemetryConfig::builder()
-            .level("info".to_string())
-            .enable_direct_loki(false)
-            .enable_remote_otlp(false)
+       let tracing_config = TracingConfig::builder()
+            .enable(true)
+            .level(LEVEL.to_string())
+            .address("localhost:4317".to_string())
+            .build()?;
+   
+        let logger_config = LoggerConfig::builder()
+            .level(LEVEL.to_string())
+            .loki(None)
+            .syslog(None)
+            .attributes(vec![])
+            .build()?;
+
+        let otlp_config = TelemetryConfig::builder()
+            .logger(logger_config)
+            .tracing(tracing_config)
             .build()?;
 
         let _otlp_guard = init_telemetry(SERVICE_NAME, &otlp_config)?;
