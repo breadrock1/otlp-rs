@@ -1,5 +1,9 @@
+mod attributes;
 mod config;
+pub use config::HeaderAttribute;
 pub use config::TelemetryConfig;
+pub use config::TracingConfig;
+pub use config::{LoggerConfig, LokiConfig, SyslogConfig};
 
 mod filter;
 pub use filter::PathFilter;
@@ -7,6 +11,9 @@ pub use filter::otel_axum_layer_filter_callback;
 
 mod logger;
 pub use logger::HttpLogger;
+
+mod syslog;
+pub use syslog::SyslogLayer;
 
 use gset::Getset;
 use opentelemetry::global;
@@ -53,17 +60,18 @@ pub fn init_telemetry(
     app_name: &'static str,
     config: &TelemetryConfig,
 ) -> anyhow::Result<TelemetryGuard> {
-    init_rust_log_env(config.level());
+    init_rust_log_env(config.logger().level());
+    attributes::validate_attributes(config.logger().attributes());
 
     let mut telemetry_guard = TelemetryGuard::default();
 
-    let telemetry_layer = match config.enable_remote_otlp() {
+    let telemetry_layer = match config.tracing().enable() {
         false => None,
         true => {
             let resource = Resource::builder().with_service_name(app_name).build();
-            let otlp_addr = config.otlp_address().clone().unwrap_or_default();
-            let level =
-                LevelFilter::from_str(config.level()).expect("invalid level value into config");
+            let otlp_addr = config.tracing().address().clone().unwrap_or_default();
+            let level = LevelFilter::from_str(config.tracing().level())
+                .expect("invalid level value into config");
 
             // Metrics are exported in batch - recommended setup for a production application.
             let metric_exporter = opentelemetry_otlp::MetricExporter::builder()
@@ -115,13 +123,10 @@ pub fn init_telemetry(
     };
 
     let loki_layer = {
-        match config.enable_direct_loki() {
+        match config.logger().is_loki_enabled() {
             false => None,
             true => {
-                let address = config
-                    .loki_address()
-                    .as_ref()
-                    .expect("missing loki address into config");
+                let address = config.logger().get_loki_config().address();
 
                 let loki_url = tracing_loki::url::Url::parse(address)
                     .expect("failed to parse loki url address");
@@ -148,11 +153,14 @@ pub fn init_telemetry(
         .with_span_events(FmtSpan::NONE)
         .pretty();
 
+    let syslog_layer = syslog::build_syslog_layer(config)?;
+
     let common_subscriber = tracing_subscriber::registry()
         .with(fmt_layer)
         .with(env_filter)
         .with(telemetry_layer)
-        .with(loki_layer);
+        .with(loki_layer)
+        .with(syslog_layer);
 
     tracing::subscriber::set_global_default(common_subscriber)?;
 

@@ -7,7 +7,7 @@ edition = "2024"
 anyhow = "1.0.102"
 axum = "0.8.8"
 tokio = "1.50.0"
-tower-http = "0.6.8"
+tower-http = { version = "0.6.8", features = ["trace"] }
 tracing = "0.1.44"
 
 [dependencies.otlp]

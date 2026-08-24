@@ -15,6 +15,7 @@ gset = "1.1.0"
 opentelemetry = "0.31.0"
 regex = "1.11.1"
 serde_derive = "1.0.218"
+syslog = "7.0.0"
 tower = "0.5.3"
 tracing = "0.1.41"
 tracing-loki = "0.2.6"
@@ -54,4 +55,4 @@ features = ["v4"]
 
 [[example]]
 name = "simple"
-path = "examples/simple"
+path = "examples/simple/src/main.rs"
